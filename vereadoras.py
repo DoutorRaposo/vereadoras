@@ -1,7 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import numpy as np
 import re
 
 def carregar_dados(csv_file):
@@ -14,6 +13,9 @@ def carregar_dados(csv_file):
     for coluna in colunas_necessarias:
         if coluna not in df.columns:
             raise ValueError(f"A coluna '{coluna}' não foi encontrada no CSV.")
+    
+    # Filtrar apenas 'ELEITO POR QP' e 'ELEITO POR MÉDIA'
+    df = df[df['DS_SIT_TOT_TURNO'].isin(['ELEITO POR QP', 'ELEITO POR MÉDIA'])]
     
     return df
 
@@ -37,8 +39,7 @@ def contar_eleitos_por_tipo(df):
         else:
             subset = filtrar_por_tamanho(df, tamanho)
         
-        filtro = subset['DS_SIT_TOT_TURNO'].isin(['ELEITO POR QP', 'ELEITO POR MÉDIA'])
-        contagem = subset[filtro]['DS_SIT_TOT_TURNO'].value_counts(normalize=True) * 100
+        contagem = subset['DS_SIT_TOT_TURNO'].value_counts(normalize=True) * 100
         
         resultados.append({
             'Tamanho': tamanho,
@@ -47,6 +48,10 @@ def contar_eleitos_por_tipo(df):
         })
     
     return pd.DataFrame(resultados)
+
+def salvar_csv(dados, nome_arquivo):
+    """Salva os dados em um arquivo CSV."""
+    dados.to_csv(nome_arquivo, index=True)
 
 def gerar_grafico_barras_coloridas(df, titulo, nome_arquivo):
     """Gera um gráfico de barras com cores variadas."""
@@ -92,10 +97,6 @@ def gerar_grafico_barras_duplas(df, titulo, nome_arquivo):
     plt.savefig(nome_arquivo)
     plt.close()
 
-def salvar_csv(dados, nome_arquivo):
-    """Salva os dados em um arquivo CSV."""
-    dados.to_csv(nome_arquivo, index=True)
-
 def main():
     csv_file = "vereadoras.csv"  # Nome correto do arquivo
     df = carregar_dados(csv_file)
@@ -111,26 +112,20 @@ def main():
         else:
             subset = filtrar_por_tamanho(df, tamanho)
         
-        # Gráficos de raça
+        # Salvar CSVs filtrados
+        salvar_csv(subset['DS_COR_RACA'].value_counts(), f"dados_raca_{tamanho.lower()}.csv")
+        salvar_csv(subset['DS_COMPOSICAO_COLIGACAO'].value_counts().head(10), f"dados_coligacoes_{tamanho.lower()}.csv")
+        salvar_csv(subset['NR_IDADE_DATA_POSSE'].value_counts().sort_index(), f"dados_idades_{tamanho.lower()}.csv")
+        
+        # Gerar gráficos
         gerar_grafico_barras_coloridas(subset['DS_COR_RACA'].value_counts(), f"Distribuição de Raça - {tamanho}", f"grafico_raca_{tamanho.lower()}.png")
-        
-        # Gráficos de coligações
         gerar_grafico_barras_coloridas(subset['DS_COMPOSICAO_COLIGACAO'].value_counts().head(10), f"Top 10 Coligações - {tamanho}", f"grafico_coligacoes_{tamanho.lower()}.png")
-        
-        # Histograma de idades
         gerar_histograma_idades(subset, f"Distribuição de Idades - {tamanho}", f"grafico_idades_{tamanho.lower()}.png")
     
     # Gráfico de eleitos por QP e Média
     proporcao_eleitos = contar_eleitos_por_tipo(df)
     gerar_grafico_barras_duplas(proporcao_eleitos, "Proporção de Eleitos por Tipo", "grafico_eleitos_proporcao.png")
-    
-    # Salvar CSVs
     salvar_csv(proporcao_eleitos, "dados_eleitos_proporcao.csv")
-    for tamanho in tamanhos:
-        subset = df if tamanho == 'TOTAL' else filtrar_por_tamanho(df, tamanho)
-        salvar_csv(subset['DS_COR_RACA'].value_counts(), f"dados_raca_{tamanho.lower()}.csv")
-        salvar_csv(subset['DS_COMPOSICAO_COLIGACAO'].value_counts().head(10), f"dados_coligacoes_{tamanho.lower()}.csv")
-        salvar_csv(subset['NR_IDADE_DATA_POSSE'].value_counts().sort_index(), f"dados_idades_{tamanho.lower()}.csv")
 
 if __name__ == "__main__":
     main()
