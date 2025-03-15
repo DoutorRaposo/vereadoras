@@ -2,6 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import re
+import sys
+import os
 
 def carregar_dados(csv_file):
     """Carrega o CSV e prepara os dados."""
@@ -51,7 +53,8 @@ def contar_eleitos_por_tipo(df):
 
 def salvar_csv(dados, nome_arquivo):
     """Salva os dados em um arquivo CSV."""
-    dados.to_csv(nome_arquivo, index=True)
+    nome_caminho = f"out/{nome_arquivo}"
+    dados.to_csv(nome_caminho, index=True)
 
 def gerar_grafico_barras_coloridas(df, titulo, nome_arquivo):
     """Gera um gráfico de barras com cores variadas."""
@@ -63,7 +66,8 @@ def gerar_grafico_barras_coloridas(df, titulo, nome_arquivo):
     plt.xlabel("Categorias")
     plt.xticks(rotation=45, ha='right')
     plt.grid(axis='y', linestyle='--', alpha=0.7)
-    plt.savefig(nome_arquivo, bbox_inches='tight')
+    nome_caminho = f"out/{nome_arquivo}"
+    plt.savefig(nome_caminho, bbox_inches='tight')
     plt.close()
 
 def gerar_histograma_idades(df, titulo, nome_arquivo):
@@ -74,17 +78,19 @@ def gerar_histograma_idades(df, titulo, nome_arquivo):
     plt.xlabel("Idade")
     plt.ylabel("Frequência")
     plt.grid(axis='y', linestyle='--', alpha=0.7)
-    plt.savefig(nome_arquivo)
+    nome_caminho = f"out/{nome_arquivo}"
+    plt.savefig(nome_caminho)
     plt.close()
 
 def gerar_grafico_barras_duplas(df, titulo, nome_arquivo):
     """Gera um gráfico de barras lado a lado com porcentagens sobre cada categoria."""
-    df.set_index('Tamanho').plot(kind='bar', figsize=(10, 6), color=['blue', 'orange'])
+    plt.figure(figsize=(10, 6))  # Aumentando a altura do gráfico para acomodar melhor a legenda
+    df.set_index('Tamanho').plot(kind='bar', figsize=(10, 8), color=['blue', 'orange'])
     plt.title(titulo)
     plt.ylabel("Proporção (%)")
     plt.xlabel("Tamanho do Município")
     plt.xticks(rotation=0)
-    plt.legend(title="Tipo de Eleição")
+    plt.legend(title="Tipo", loc='upper left', bbox_to_anchor=(1, 1))
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     
     # Adicionar valores no topo das barras
@@ -94,11 +100,18 @@ def gerar_grafico_barras_duplas(df, titulo, nome_arquivo):
         plt.text(i - 0.15, qp + 1, f'{qp:.1f}%', ha='center', fontsize=10, color='black')
         plt.text(i + 0.15, media + 1, f'{media:.1f}%', ha='center', fontsize=10, color='black')
     
-    plt.savefig(nome_arquivo)
+    nome_caminho = f"out/{nome_arquivo}"
+    plt.savefig(nome_caminho, bbox_inches='tight')
     plt.close()
-
+    
 def main():
-    csv_file = "vereadoras.csv"  # Nome correto do arquivo
+    if len(sys.argv) != 2:
+        print("Uso: python vereadoras.py <arquivo_csv>")
+        sys.exit(1)
+    
+    os.makedirs("out", exist_ok=True)
+    
+    csv_file = sys.argv[1]
     df = carregar_dados(csv_file)
     
     # Substituir nomes das coligações pelos nomes dentro dos parênteses quando houver
@@ -118,13 +131,13 @@ def main():
         salvar_csv(subset['NR_IDADE_DATA_POSSE'].value_counts().sort_index(), f"dados_idades_{tamanho.lower()}.csv")
         
         # Gerar gráficos
-        gerar_grafico_barras_coloridas(subset['DS_COR_RACA'].value_counts(), f"Distribuição de Raça - {tamanho}", f"grafico_raca_{tamanho.lower()}.png")
-        gerar_grafico_barras_coloridas(subset['DS_COMPOSICAO_COLIGACAO'].value_counts().head(10), f"Top 10 Coligações - {tamanho}", f"grafico_coligacoes_{tamanho.lower()}.png")
-        gerar_histograma_idades(subset, f"Distribuição de Idades - {tamanho}", f"grafico_idades_{tamanho.lower()}.png")
+        gerar_grafico_barras_coloridas(subset['DS_COR_RACA'].value_counts(), f"Distribuição de raça por municípios {'paranaenses' if tamanho == 'TOTAL' else tamanho.lower() + 's'}", f"grafico_raca_{tamanho.lower()}.png")
+        gerar_grafico_barras_coloridas(subset['DS_COMPOSICAO_COLIGACAO'].value_counts().head(10), f"Coligações com maior N de eleitas nos municípios {'paranaenses' if tamanho == 'TOTAL' else tamanho.lower() + 's'}", f"grafico_coligacoes_{tamanho.lower()}.png")
+        gerar_histograma_idades(subset, f"Distribuição de idade por município {'paranaenses' if tamanho == 'TOTAL' else tamanho.lower() + 's'}", f"grafico_idades_{tamanho.lower()}.png")
     
     # Gráfico de eleitos por QP e Média
     proporcao_eleitos = contar_eleitos_por_tipo(df)
-    gerar_grafico_barras_duplas(proporcao_eleitos, "Proporção de Eleitos por Tipo", "grafico_eleitos_proporcao.png")
+    gerar_grafico_barras_duplas(proporcao_eleitos, "Proporção de eleitos por tipo", "grafico_eleitos_proporcao.png")
     salvar_csv(proporcao_eleitos, "dados_eleitos_proporcao.csv")
 
 if __name__ == "__main__":
