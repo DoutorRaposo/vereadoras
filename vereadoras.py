@@ -57,15 +57,23 @@ def salvar_csv(dados, nome_arquivo):
     dados.to_csv(nome_caminho, index=True)
 
 def gerar_grafico_barras_coloridas(df, titulo, nome_arquivo):
-    """Gera um gráfico de barras com cores variadas."""
+    """Gera um gráfico de barras com cores variadas e exibe os valores no topo."""
     plt.figure(figsize=(12, 6))
     colors = sns.color_palette("muted", len(df))
-    df.plot(kind='bar', color=colors, legend=False)
+    ax = df.plot(kind='bar', color=colors, legend=False)
+    ax.set_ylim(0, max(df) * 1.2) 
     plt.title(titulo)
     plt.ylabel("Quantidade")
     plt.xlabel("Categorias")
     plt.xticks(rotation=45, ha='right')
     plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+    # Adicionar valores no topo das barras
+    for i, v in enumerate(df):
+        if v > 0:  # Evita exibir valores em barras vazias
+            ax.text(i, v + (max(df) * 0.02), str(v), ha='center', fontsize=10, color='black')
+
+    # Salvar o gráfico na pasta out/
     nome_caminho = f"out/{nome_arquivo}"
     plt.savefig(nome_caminho, bbox_inches='tight')
     plt.close()
